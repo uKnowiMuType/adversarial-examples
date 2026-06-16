@@ -1,0 +1,96 @@
+{
+  "paper_type": "method",
+  "allowed_paper_types": ["method", "empirical", "benchmark", "theory", "survey", "clinical", "humanities"],
+  "section_plan": {
+    "## 核心信息": "metadata block only",
+    "## 研究背景与问题": "adversarial transferability gap between CNNs and ViTs; why equal-weight ensemble fails",
+    "## 方法主线": "AGM (adaptive gradient modulation) + DRF (disparity-reduced filter) — detailed mechanism flow",
+    "## 实验设计": "datasets, models, baselines, hyperparams, evaluation protocol",
+    "## 核心实验结果": "main black-box ASR tables, ablation studies, defense-attack results",
+    "## 讨论与局限": "what the paper does and does not prove; limitations",
+    "## 总结与启发": "reusability takeaways",
+    "## 原文摘要翻译": "faithful Chinese translation of original abstract",
+    "## 创新点": "actual innovations enumerated with rationale",
+    "## 一句话总结": "single sentence takeaway",
+    "## 参考文献与后续阅读": "key citations and followup directions"
+  },
+  "central_claims": [
+    {
+      "claim": "Equal-weight fusion in ensemble attacks smooths out transferable information, causing under-optimized results",
+      "supporting_evidence": "Fig. 2 cosine similarity heatmap shows gradient dissimilarity across architectures; Table 4 shows simple ensemble baseline (27.29%) vs AdaEA (44.78%)",
+      "what_it_proves": "There exists gradient disparity across diverse architectures, and naive averaging loses individual model strengths",
+      "what_it_does_not_prove": "Does not prove that the loss of transferable info is the sole cause; other factors like optimization landscape may contribute"
+    },
+    {
+      "claim": "AGM adaptively weights surrogate models by their adversarial ratio, amplifying transferable information",
+      "supporting_evidence": "Table 4: +AGM improves over baseline by 12.5% average ASR; the adversarial ratio exploits cross-model attack performance as a proxy for transferability",
+      "what_it_proves": "Adaptive weighting based on inter-model attack performance is effective",
+      "what_it_does_not_prove": "The adversarial ratio is the optimal proxy; no comparison with alternative transferability metrics"
+    },
+    {
+      "claim": "DRF synchronizes gradient update direction by filtering out disparity components, mitigating overfitting",
+      "supporting_evidence": "Table 4: +DRF improves ViT transfer from 23.94% to 47.57%; qualitative analysis in supplementary material",
+      "what_it_proves": "Filtering gradient disparity helps cross-architecture transfer",
+      "what_it_does_not_prove": "The binarization threshold η=-0.3 is universally optimal; sensitivity analysis only covers CIFAR-10"
+    },
+    {
+      "claim": "AdaEA can be plugged into existing transfer-based attacks and boosts them consistently",
+      "supporting_evidence": "Table 2: AdaEA boosts FGSM (+24.12%), I-FGSM (+18.27%), MI-FGSM (+17.74%), DI²-FGSM (+7.88%) over baseline Ens",
+      "what_it_proves": "AdaEA is a versatile ensemble wrapper, not a standalone attack",
+      "what_it_does_not_prove": "Effectiveness on attacks beyond those tested (e.g., targeted attacks, patch attacks)"
+    }
+  ],
+  "claim_boundaries": [
+    "All experiments use l∞ constraint with ε=8/255; transferability under other threat models (l2, l0) is not studied",
+    "Surrogate models are all standardly trained; adversarial-trained surrogates not explored",
+    "ImageNet evaluation uses only a subset of models; statistical significance tests not reported",
+    "No evaluation on object detection or segmentation downstream tasks"
+  ],
+  "negative_or_limiting_results": [
+    "SVRE degrades significantly under DI²-FGSM (Ens: 72.44% → SVRE: 33.49%, -38.95%), while AdaEA improves it (+7.88%)",
+    "When only CNNs are surrogate models, attack on ViTs remains weak (~10-13%), suggesting architecture gap is not fully bridged",
+    "AdaEA's advantage shrinks on ImageNet vs CIFAR (+2.98% vs +18.53%), possibly due to higher baseline difficulty"
+  ],
+  "mechanism_result_map": [
+    {
+      "mechanism": "AGM: adversarial ratio ρ_i measures how well adversarial examples from model i attack other models",
+      "result_explained": "Table 4 CNN ASR: baseline 29.96% → +AGM 39.48%; the adaptive weighting prevents dominant models from suppressing transferable signals",
+      "design_choice": "Using logit-based cross-entropy loss for adversarial ratio computation (Eq. 3-4), weight scale β=10"
+    },
+    {
+      "mechanism": "DRF: cosine similarity-based disparity map binarized at threshold η",
+      "result_explained": "Table 4 ViT ASR: baseline 23.94% → +DRF 47.57%; the filter removes gradient components where models disagree, synchronizing the update direction",
+      "design_choice": "Channel-wise cosine similarity (Eq. 6), element-wise binary mask (Eq. 7), η=-0.3"
+    },
+    {
+      "mechanism": "AGM + DRF combined",
+      "result_explained": "Table 1: AdaEA achieves 45.09% (CIFAR-10), 71.10% (CIFAR-100), 49.36% (ImageNet) average ASR, consistently exceeding Ens and SVRE",
+      "design_choice": "AGM modulates weight then DRF filters disparity; order matters (AGM first, then DRF applied to weighted ensemble)"
+    }
+  ],
+  "comparative_positioning": [
+    {
+      "vs_prior": "Ens (Liu et al. 2017) uses equal-weight average; SVRE (Xiong et al. 2022) reduces variance but still treats all models uniformly",
+      "difference": "AdaEA does not treat models uniformly — it adaptively modulates weight based on transferability contribution (AGM) and synchronizes gradient direction (DRF)",
+      "interpretation_change": "The ensemble problem is reframed from variance reduction to information amplification — each model's contribution is actively shaped rather than passively averaged"
+    },
+    {
+      "vs_prior": "Transfer-based methods (MI-FGSM, DI²-FGSM) focus on single-surrogate perturbation crafting",
+      "difference": "AdaEA operates at the ensemble level and is orthogonal — it can wrap any gradient-based attack on multiple surrogates",
+      "interpretation_change": "Ensemble diversity is not just about model count; how you fuse their signals matters as much as which models you include"
+    }
+  ],
+  "reuse_takeaways": [
+    "AGM + DRF is a drop-in ensemble wrapper for any iterative gradient-based attack (I-FGSM, MI-FGSM, DI²-FGSM, etc.)",
+    "The adversarial ratio defined in Eq. (3-4) can serve as a general transferability diagnostic for ensemble selection",
+    "DRF's cosine similarity-based disparity filtering may generalize to other multi-model optimization problems beyond adversarial attacks",
+    "When building an ensemble for black-box attack, including both CNN and ViT surrogates is critical for cross-architecture transfer"
+  ],
+  "followup_questions": [
+    "Can AGM's adversarial ratio be computed more efficiently without O(K²) forward passes?",
+    "Does AdaEA help targeted attacks and physical-world attacks?",
+    "Can the DRF threshold η be learned or scheduled rather than fixed?",
+    "How does AdaEA perform with adversarially trained surrogates?",
+    "Can AdaEA's weighting scheme be interpreted as attention over surrogate models, and does it reveal which models contribute most to transferability?"
+  ]
+}
